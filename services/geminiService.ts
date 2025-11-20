@@ -3,11 +3,12 @@ import { Article } from '../types.ts';
 
 // Safely access API key with browser fallback
 const getApiKey = () => {
-  try {
-    return typeof process !== 'undefined' && process.env ? process.env.API_KEY : '';
-  } catch (e) {
-    return '';
+  // @ts-ignore
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    // @ts-ignore
+    return process.env.API_KEY;
   }
+  return '';
 };
 
 export const geminiService = {
