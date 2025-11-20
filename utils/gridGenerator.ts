@@ -86,10 +86,9 @@ export function generateLevelData(sentence: string) {
   );
 
   // 2. Determine Start Position (Center-ish)
-  // 8x8 grid, center is roughly (3,3), (3,4), (4,3), (4,4)
-  // We randomize slightly around the center
-  const startRow = 3 + Math.floor(Math.random() * 2); // 3 or 4
-  const startCol = 3 + Math.floor(Math.random() * 2); // 3 or 4
+  // 8x8 grid, center is roughly indices 3 and 4.
+  const startRow = 3 + Math.floor(Math.random() * 2); 
+  const startCol = 3 + Math.floor(Math.random() * 2); 
   const startPos: Coordinate = { row: startRow, col: startCol };
 
   // 3. Generate Path
@@ -99,12 +98,10 @@ export function generateLevelData(sentence: string) {
   const path: Coordinate[] = [startPos];
   
   // We need to place sentence characters [0...N-1]
-  // startPos holds char at index 0.
-  // We need to find path for 1...N-1
   const success = generatePath(startPos, 1, sentence.length, visited, path);
 
   if (!success) {
-    // Fallback for path generation failure
+    // Should rarely happen on 8x8 grid with lengths 10-20
     throw new Error("Failed to generate path");
   }
 
@@ -128,5 +125,5 @@ export function generateLevelData(sentence: string) {
     }
   }
 
-  return { grid, startPos };
+  return { grid, startPos, sentence };
 }

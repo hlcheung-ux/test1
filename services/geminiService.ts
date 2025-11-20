@@ -9,7 +9,7 @@ export const geminiService = {
   async segmentArticle(article: Article): Promise<string[]> {
     const apiKey = getApiKey();
     
-    // If no key, use a simple fallback segmentation
+    // If no key, use the robust algorithmic segmentation
     if (!apiKey) {
       return this.simpleSegment(article.paragraphs.join(''));
     }
@@ -41,40 +41,38 @@ export const geminiService = {
       return JSON.parse(text);
 
     } catch (error) {
-      console.error("Segmentation failed:", error);
+      console.error("Segmentation failed, using fallback:", error);
       return this.simpleSegment(article.paragraphs.join(''));
     }
   },
 
   simpleSegment(text: string): string[] {
-    // Remove punctuation
-    const cleanText = text.replace(/[，。？！：；、\s]/g, '');
+    // Remove punctuation and spaces
+    const cleanText = text.replace(/[，。？！：；、\s「」『』]/g, '');
+    const totalLen = cleanText.length;
+    
+    if (totalLen === 0) return [];
+    
+    // Target average length of 15 (middle of 10-20)
+    // Calculate ideal number of segments
+    const TARGET_AVG = 15;
+    const numSegments = Math.max(1, Math.round(totalLen / TARGET_AVG));
+    
+    // Calculate the exact length for each segment to be as even as possible
+    const baseLen = Math.floor(totalLen / numSegments);
+    const remainder = totalLen % numSegments;
     
     const segments: string[] = [];
-    let startIndex = 0;
-    const textLen = cleanText.length;
+    let currentPos = 0;
     
-    // Simple greedy chunking between 10 and 20 chars
-    while (startIndex < textLen) {
-      // Default chunk size 10
-      let chunkSize = 10;
-      
-      // If remaining is small (e.g. 12), take it all
-      if (textLen - startIndex <= 20) {
-        chunkSize = textLen - startIndex;
-      } else {
-         // Vary slightly for randomness if desired, but here we stick to ~10-14
-         // to prevent leftovers being too small
-         chunkSize = 14;
-      }
-
-      const segment = cleanText.substring(startIndex, startIndex + chunkSize);
-      if (segment.length > 0) {
-        segments.push(segment);
-      }
-      startIndex += chunkSize;
+    for (let i = 0; i < numSegments; i++) {
+      // Distribute the remainder +1 to the first few segments
+      const segLen = baseLen + (i < remainder ? 1 : 0);
+      const segment = cleanText.substring(currentPos, currentPos + segLen);
+      segments.push(segment);
+      currentPos += segLen;
     }
-
+    
     return segments;
   }
 };

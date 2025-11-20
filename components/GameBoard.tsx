@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Article, GridCell, LevelData } from '../types';
 import { generateLevelData } from '../utils/gridGenerator';
 import { GRID_SIZE } from '../constants';
@@ -16,6 +16,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({ article, onBack }) => {
   const [completed, setCompleted] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [shakeId, setShakeId] = useState<string | null>(null);
+  
+  // Ref to grid container to calculate line positions
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [cellSize, setCellSize] = useState(0);
 
   const segments = article.segments || [];
   const currentSegment = segments[currentSegmentIndex] || '';
@@ -38,6 +42,24 @@ export const GameBoard: React.FC<GameBoardProps> = ({ article, onBack }) => {
     }
   }, [currentSegment, currentSegmentIndex, segments.length]);
 
+  // Measure cell size for SVG lines
+  useEffect(() => {
+    if (gridRef.current) {
+      const firstCell = gridRef.current.querySelector('button');
+      if (firstCell) {
+        setCellSize(firstCell.offsetWidth);
+      }
+    }
+    const handleResize = () => {
+      if (gridRef.current) {
+         const firstCell = gridRef.current.querySelector('button');
+         if(firstCell) setCellSize(firstCell.offsetWidth);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [levelData]);
+
   const handleCellClick = useCallback((cell: GridCell) => {
     if (!levelData || completed) return;
 
@@ -45,17 +67,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({ article, onBack }) => {
     const nextIndex = userPath.length;
     
     if (cell.isTarget && cell.targetIndex === nextIndex) {
-      // 2. Check adjacency (Moore neighborhood / 9-grid)
+      // 2. Check adjacency (9-grid / diagonals included)
       const lastCharIndex = nextIndex - 1;
       
-      // Find coordinates of the last added character
       let lastRow = -1, lastCol = -1;
       if (lastCharIndex === -1) {
-          // Should not happen as we init with 0, but for safety
+          // Should not happen as we init with 0
           lastRow = levelData.startPos.row;
           lastCol = levelData.startPos.col;
       } else {
-          // Find the cell in the grid that corresponds to the last index
+          // Find last selected cell
            outerLoop:
            for(let r=0; r<GRID_SIZE; r++){
                for(let c=0; c<GRID_SIZE; c++){
@@ -71,8 +92,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ article, onBack }) => {
       const dx = Math.abs(cell.col - lastCol);
       const dy = Math.abs(cell.row - lastRow);
       
-      // Allow horizontal, vertical, and diagonal moves (distance <= 1)
-      // Since cell.targetIndex !== lastCharIndex, we don't need to check if it's the same cell
+      // Allow distance <= 1 (includes diagonals)
       const isAdjacent = dx <= 1 && dy <= 1;
 
       if (isAdjacent) {
@@ -91,10 +111,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({ article, onBack }) => {
               alert("恭喜！整篇文章已背誦完成。");
               onBack();
             }
-          }, 1000);
+          }, 1500);
         }
       } else {
-        // Correct char, wrong position (not adjacent)
         triggerShake(cell.id);
       }
     } else {
@@ -118,10 +137,24 @@ export const GameBoard: React.FC<GameBoardProps> = ({ article, onBack }) => {
 
   if (!levelData) return <div className="p-10 text-center font-serif">準備墨寶中...</div>;
 
+  // Helper to get center coordinates for SVG lines relative to grid container
+  // Gap is 0.25rem (4px) usually, assuming gap-1 in grid
+  const getCenter = (r: number, c: number) => {
+    const gap = 4; 
+    // cell + gap
+    const step = cellSize + gap;
+    // center of cell
+    const offset = cellSize / 2;
+    return {
+      x: c * step + offset,
+      y: r * step + offset
+    };
+  };
+
   return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto bg-paper relative">
+    <div className="flex flex-col h-screen max-w-2xl mx-auto bg-paper relative overflow-hidden">
       {/* Header */}
-      <div className="p-4 flex justify-between items-center border-b-2 border-stone-200">
+      <div className="p-4 flex justify-between items-center border-b-2 border-stone-200 z-10 bg-paper">
         <button onClick={onBack} className="text-stone-500 hover:text-stone-900 font-serif">
           ← 返回
         </button>
@@ -140,54 +173,89 @@ export const GameBoard: React.FC<GameBoardProps> = ({ article, onBack }) => {
       </div>
 
       {/* Grid Area */}
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div 
-          className="grid gap-1 bg-stone-800 p-2 rounded shadow-xl"
-          style={{ 
-            gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))` 
-          }}
-        >
-          {levelData.grid.map((row, rIndex) => (
-            row.map((cell, cIndex) => {
-              // State Calculations
-              const isSelected = userPath.includes(cell.targetIndex) && cell.isTarget;
-              const isNext = showHint && cell.isTarget && cell.targetIndex === userPath.length;
-              const isStart = cell.isTarget && cell.targetIndex === 0;
-              const isShaking = shakeId === cell.id;
+      <div className="flex-1 flex items-center justify-center p-4 relative">
+        <div className="relative">
+          {/* SVG Overlay for connecting lines */}
+          <svg className="absolute top-0 left-0 w-full h-full pointer-events-none z-20 overflow-visible">
+             {levelData && userPath.length > 1 && userPath.map((idx, i) => {
+                if (i === 0) return null;
+                // Find coords of i and i-1
+                let currR=0, currC=0, prevR=0, prevC=0;
+                levelData.grid.flat().forEach(cell => {
+                  if (cell.isTarget && cell.targetIndex === idx) { currR = cell.row; currC = cell.col; }
+                  if (cell.isTarget && cell.targetIndex === idx - 1) { prevR = cell.row; prevC = cell.col; }
+                });
+                const start = getCenter(prevR, prevC);
+                const end = getCenter(currR, currC);
+                
+                return (
+                  <line
+                    key={`line-${i}`}
+                    x1={start.x}
+                    y1={start.y}
+                    x2={end.x}
+                    y2={end.y}
+                    stroke="rgba(41, 37, 36, 0.6)" // stone-800 with opacity
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    className="animate-draw"
+                  />
+                );
+             })}
+          </svg>
 
-              let bgClass = "bg-stone-100 text-stone-800"; // Default
-              if (isSelected) bgClass = "bg-stone-900 text-stone-100"; // Selected
-              else if (isNext) bgClass = "bg-amber-100 text-stone-900 ring-2 ring-amber-400"; // Hint
+          <div 
+            ref={gridRef}
+            className="grid gap-1 bg-stone-800 p-2 rounded shadow-xl z-10 relative"
+            style={{ 
+              gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))` 
+            }}
+          >
+            {levelData.grid.map((row, rIndex) => (
+              row.map((cell, cIndex) => {
+                const isSelected = userPath.includes(cell.targetIndex) && cell.isTarget;
+                const isNext = showHint && cell.isTarget && cell.targetIndex === userPath.length;
+                const isStart = cell.isTarget && cell.targetIndex === 0;
+                const isShaking = shakeId === cell.id;
+                const isCurrentHead = cell.isTarget && cell.targetIndex === userPath.length - 1;
 
-              // Font size logic for responsiveness
-              const fontSize = "text-lg sm:text-xl md:text-2xl";
+                let bgClass = "bg-stone-100 text-stone-800"; 
+                if (isSelected) bgClass = "bg-stone-300 text-stone-900"; // Lighter selected state so lines show better? Or keep dark.
+                if (isCurrentHead) bgClass = "bg-stone-900 text-stone-100"; // Head is dark
+                if (isStart && !isCurrentHead) bgClass = "bg-stone-400 text-stone-900"; // Start point distinct if not head
+                if (isNext) bgClass = "bg-amber-100 text-stone-900 ring-2 ring-amber-400"; 
 
-              return (
-                <button
-                  key={cell.id}
-                  onClick={() => handleCellClick(cell)}
-                  className={`
-                    w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 
-                    flex items-center justify-center 
-                    font-serif font-bold ${fontSize}
-                    rounded-sm transition-all duration-200
-                    ${bgClass}
-                    ${isShaking ? 'animate-[shake_0.5s_ease-in-out]' : ''}
-                    ${isStart ? 'ring-2 ring-stone-400 ring-offset-1' : ''}
-                    hover:brightness-95 active:scale-95
-                  `}
-                  disabled={isSelected || completed}
-                >
-                  {cell.char}
-                </button>
-              );
-            })
-          ))}
+                // Font size logic for responsiveness
+                const fontSize = "text-lg sm:text-xl md:text-2xl";
+
+                return (
+                  <button
+                    key={cell.id}
+                    onClick={() => handleCellClick(cell)}
+                    className={`
+                      w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 
+                      flex items-center justify-center 
+                      font-serif font-bold ${fontSize}
+                      rounded-sm transition-all duration-200
+                      ${bgClass}
+                      ${isShaking ? 'animate-[shake_0.5s_ease-in-out]' : ''}
+                      ${isStart ? 'ring-2 ring-stone-400 ring-offset-1' : ''}
+                      hover:brightness-95 active:scale-95
+                      z-30
+                    `}
+                    disabled={isSelected || completed}
+                  >
+                    {cell.char}
+                  </button>
+                );
+              })
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Bottom Controls */}
-      <div className="p-6 bg-stone-100 border-t border-stone-300">
+      <div className="p-6 bg-stone-100 border-t border-stone-300 z-30">
         <div className="flex justify-center mb-4 min-h-[3rem]">
           <div className="flex flex-wrap justify-center gap-1">
              {/* Show progress of sentence */}
@@ -195,8 +263,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({ article, onBack }) => {
                <span 
                  key={idx}
                  className={`
-                   w-8 h-8 flex items-center justify-center border border-stone-300 bg-white font-serif
-                   ${idx < userPath.length ? 'text-stone-900 font-bold' : 'text-transparent'}
+                   w-8 h-8 flex items-center justify-center border border-stone-300 bg-white font-serif transition-colors duration-300
+                   ${idx < userPath.length ? 'text-stone-900 font-bold bg-stone-200' : 'text-transparent'}
                  `}
                >
                  {char}
