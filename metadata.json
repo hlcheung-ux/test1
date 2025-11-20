@@ -1,0 +1,5 @@
+{
+  "name": "文心雕龍 (Classic Memory)",
+  "description": "An immersive Classical Chinese memorization game using pathfinding logic on an 8x8 grid.",
+  "requestFramePermissions": []
+}
