@@ -37,14 +37,25 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- Babel for in-browser JSX compilation -->
+    <!-- 1. React & Babel (UMD) -->
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Polyfills for Node environment variables in browser -->
+    <!-- 2. Polyfills -->
     <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
       window.Buffer = window.Buffer || buffer.Buffer;
+      
+      // Initialize Global Namespace
+      window.GameApp = {
+        types: {},
+        constants: {},
+        utils: {},
+        services: {},
+        components: {}
+      };
     </script>
 
     <style>
@@ -52,42 +63,10 @@
         background-color: #fdfbf7;
         font-family: 'Noto Serif TC', serif;
       }
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background-color: #d6d3d1;
-        border-radius: 20px;
-      }
-      #error-message {
-        display: none;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #fee2e2;
-        color: #991b1b;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border: 1px solid #ef4444;
-        z-index: 9999;
-        max-width: 80%;
-        word-wrap: break-word;
-      }
     </style>
-    
-    <!-- CRITICAL: Import Map must NOT have conflicting React versions -->
-    <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client?deps=react@18.2.0",
-    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime?deps=react@18.2.0",
-    "@google/genai": "https://esm.sh/@google/genai",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/"
   }
 }
@@ -96,27 +75,16 @@
   <body>
     <div id="root"></div>
     
-    <div id="error-message">
-      <h3 class="font-bold">啟動錯誤</h3>
-      <p id="error-text">應用程式無法載入。</p>
-    </div>
+    <!-- 3. Load Application Scripts in Dependency Order -->
+    <!-- Note: We use type="text/babel" so Babel compiles them in browser -->
     
-    <script>
-      window.addEventListener('error', function(e) {
-        // Filter out common non-critical errors
-        if (e.message && e.message.includes("ResizeObserver")) return;
-        
-        const errDiv = document.getElementById('error-message');
-        const errText = document.getElementById('error-text');
-        if (errDiv && errText) {
-          errDiv.style.display = 'block';
-          errText.textContent = e.message || "Unknown Error";
-          console.error("Global Error:", e);
-        }
-      });
-    </script>
-    
-    <!-- Load the App Entry Point -->
-    <script type="text/babel" data-type="module" data-presets="react,typescript" src="./index.tsx"></script>
+    <script type="text/babel" src="./types.ts"></script>
+    <script type="text/babel" src="./constants.ts"></script>
+    <script type="text/babel" src="./utils/gridGenerator.ts"></script>
+    <script type="text/babel" src="./services/geminiService.ts"></script>
+    <script type="text/babel" src="./components/ArticleSelector.tsx"></script>
+    <script type="text/babel" src="./components/GameBoard.tsx"></script>
+    <script type="text/babel" src="./App.tsx"></script>
+    <script type="text/babel" src="./index.tsx"></script>
   </body>
 </html>
