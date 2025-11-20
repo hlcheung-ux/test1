@@ -51,6 +51,19 @@
         background-color: #d6d3d1;
         border-radius: 20px;
       }
+      #error-message {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid #ef4444;
+        z-index: 9999;
+      }
     </style>
     <script type="importmap">
 {
@@ -67,6 +80,20 @@
 </head>
   <body>
     <div id="root"></div>
+    <div id="error-message">
+      <h3 class="font-bold">啟動錯誤</h3>
+      <p id="error-text">應用程式無法載入。請檢查控制台 (F12) 以獲取更多資訊。</p>
+    </div>
+    <script>
+      window.addEventListener('error', function(e) {
+        const errDiv = document.getElementById('error-message');
+        const errText = document.getElementById('error-text');
+        if (errDiv && errText) {
+          errDiv.style.display = 'block';
+          errText.textContent = e.message;
+        }
+      });
+    </script>
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
