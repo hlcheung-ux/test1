@@ -1,4 +1,3 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { Article } from '../types.ts';
 
 // Safely access API key with browser fallback
@@ -15,14 +14,18 @@ export const geminiService = {
   async segmentArticle(article: Article): Promise<string[]> {
     const apiKey = getApiKey();
     
-    // If no key, use the robust algorithmic segmentation
+    // If no key, use the robust algorithmic segmentation immediately
     if (!apiKey) {
       return this.simpleSegment(article.paragraphs.join(''));
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-
     try {
+      // Dynamic import to prevent initial page load crash
+      // @ts-ignore
+      const { GoogleGenAI, Type } = await import("@google/genai");
+      
+      const ai = new GoogleGenAI({ apiKey });
+
       const content = article.paragraphs.join('\n');
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -47,7 +50,7 @@ export const geminiService = {
       return JSON.parse(text);
 
     } catch (error) {
-      console.error("Segmentation failed, using fallback:", error);
+      console.error("Segmentation failed or AI lib not found, using fallback:", error);
       return this.simpleSegment(article.paragraphs.join(''));
     }
   },
@@ -75,7 +78,9 @@ export const geminiService = {
       // Distribute the remainder +1 to the first few segments
       const segLen = baseLen + (i < remainder ? 1 : 0);
       const segment = cleanText.substring(currentPos, currentPos + segLen);
-      segments.push(segment);
+      if (segment) {
+          segments.push(segment);
+      }
       currentPos += segLen;
     }
     
