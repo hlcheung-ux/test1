@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Article, GridCell, LevelData } from '../types';
-import { generateLevelData } from '../utils/gridGenerator';
-import { GRID_SIZE } from '../constants';
+import { Article, GridCell, LevelData } from '../types.ts';
+import { generateLevelData } from '../utils/gridGenerator.ts';
+import { GRID_SIZE } from '../constants.ts';
 
 interface GameBoardProps {
   article: Article;

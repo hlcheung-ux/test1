@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { ArticleSelector } from './components/ArticleSelector';
-import { GameBoard } from './components/GameBoard';
-import { Article, GameState } from './types';
-import { geminiService } from './services/geminiService';
+import { ArticleSelector } from './components/ArticleSelector.tsx';
+import { GameBoard } from './components/GameBoard.tsx';
+import { Article, GameState } from './types.ts';
+import { geminiService } from './services/geminiService.ts';
 
 const App: React.FC = () => {
   const [view, setView] = useState<GameState>(GameState.MENU);

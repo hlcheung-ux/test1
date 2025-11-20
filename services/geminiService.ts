@@ -1,6 +1,5 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
-import { Article } from '../types';
+import { Article } from '../types.ts';
 
 // Safely access API key with browser fallback
 const getApiKey = () => {

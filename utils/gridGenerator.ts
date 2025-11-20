@@ -1,6 +1,5 @@
-
-import { GRID_SIZE, DISTRACTOR_CHARS } from '../constants';
-import { GridCell, Coordinate } from '../types';
+import { GRID_SIZE, DISTRACTOR_CHARS } from '../constants.ts';
+import { GridCell, Coordinate } from '../types.ts';
 
 // Directions: Up, Down, Left, Right, and Diagonals (Moore neighborhood)
 const DIRECTIONS = [

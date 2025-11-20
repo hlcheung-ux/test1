@@ -1,7 +1,6 @@
-
 import React from 'react';
-import { Article } from '../types';
-import { FIXED_ARTICLES } from '../constants';
+import { Article } from '../types.ts';
+import { FIXED_ARTICLES } from '../constants.ts';
 
 interface ArticleSelectorProps {
   onSelect: (article: Article) => void;
