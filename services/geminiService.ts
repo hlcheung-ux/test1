@@ -2,8 +2,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Article } from '../types';
 
-// Safely access API key
-const getApiKey = () => process.env.API_KEY || '';
+// Safely access API key with browser fallback
+const getApiKey = () => {
+  try {
+    return typeof process !== 'undefined' && process.env ? process.env.API_KEY : '';
+  } catch (e) {
+    return '';
+  }
+};
 
 export const geminiService = {
   async segmentArticle(article: Article): Promise<string[]> {
